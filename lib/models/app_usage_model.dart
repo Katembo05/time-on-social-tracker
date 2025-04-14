@@ -1,3 +1,26 @@
+class AppUsageModel {
+  final String appName;
+  final double hoursUsed;
+  final double dailyLimit;
+
+  const AppUsageModel({
+    required this.appName,
+    required this.hoursUsed,
+    required this.dailyLimit,
+  });
+
+  double get percentageOfLimit => hoursUsed / dailyLimit;
+
+  // Convert AppUsageInfo to AppUsageModel
+  factory AppUsageModel.fromUsageInfo(AppUsageInfo info, double dailyLimit) {
+    return AppUsageModel(
+      appName: info.appName,
+      hoursUsed: info.usage.inMinutes / 60.0,
+      dailyLimit: dailyLimit,
+    );
+  }
+}
+
 class AppUsageInfo {
   final String appName;
   final String packageName;

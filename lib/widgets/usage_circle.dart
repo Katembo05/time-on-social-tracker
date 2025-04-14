@@ -1,123 +1,116 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
+import 'package:fl_chart/fl_chart.dart';
+import '../models/app_usage_model.dart';
+import 'social_media_icon.dart';
 
 class UsageCircle extends StatelessWidget {
-  final int usedMinutes;
-  final int totalMinutes;
-  
+  final List<AppUsageModel> usageData;
+  final double totalHours;
+
   const UsageCircle({
     Key? key,
-    required this.usedMinutes,
-    required this.totalMinutes,
+    required this.usageData,
+    required this.totalHours,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final progress = usedMinutes / totalMinutes;
-    final remainingMinutes = totalMinutes - usedMinutes;
-    final isOverLimit = usedMinutes >= totalMinutes;
-    
-    return Container(
-      width: 200,
-      height: 200,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Progress circle
-          CustomPaint(
-            size: Size(200, 200),
-            painter: CircleProgressPainter(
-              progress: math.min(1.0, progress),
-              progressColor: isOverLimit 
-                ? Theme.of(context).colorScheme.error
-                : Theme.of(context).primaryColor,
-              backgroundColor: Theme.of(context).dividerColor.withOpacity(0.1),
-            ),
-          ),
-          
-          // Usage text
-          Column(
-            mainAxisSize: MainAxisSize.min,
+    return Column(
+      children: [
+        SizedBox(
+          height: 200,
+          child: Stack(
             children: [
-              Text(
-                '$usedMinutes min',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: isOverLimit 
-                    ? Theme.of(context).colorScheme.error
-                    : Theme.of(context).primaryColor,
-                  fontWeight: FontWeight.bold,
+              PieChart(
+                PieChartData(
+                  sections: _createSections(),
+                  centerSpaceRadius: 40,
+                  sectionsSpace: 2,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                isOverLimit ? 'Over limit!' : 'of $totalMinutes min',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).textTheme.bodySmall?.color,
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      totalHours.toStringAsFixed(1),
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    Text(
+                      'hours today',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
               ),
-              if (!isOverLimit) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '$remainingMinutes min left',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-              ],
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class CircleProgressPainter extends CustomPainter {
-  final double progress;
-  final Color progressColor;
-  final Color backgroundColor;
-  
-  CircleProgressPainter({
-    required this.progress,
-    required this.progressColor,
-    required this.backgroundColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) / 2;
-    const startAngle = -math.pi / 2;
-    final sweepAngle = 2 * math.pi * progress;
-    
-    // Draw background circle
-    final backgroundPaint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 12;
-    
-    canvas.drawCircle(center, radius, backgroundPaint);
-    
-    // Draw progress arc
-    final progressPaint = Paint()
-      ..color = progressColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 12
-      ..strokeCap = StrokeCap.round;
-    
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      startAngle,
-      sweepAngle,
-      false,
-      progressPaint,
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          children: _createLegendItems(context),
+        ),
+      ],
     );
   }
 
-  @override
-  bool shouldRepaint(CircleProgressPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-           oldDelegate.progressColor != progressColor ||
-           oldDelegate.backgroundColor != backgroundColor;
+  List<PieChartSectionData> _createSections() {
+    final List<PieChartSectionData> sections = [];
+    
+    for (var i = 0; i < usageData.length; i++) {
+      final usage = usageData[i];
+      final percentage = (usage.hoursUsed / totalHours) * 100;
+      
+      sections.add(
+        PieChartSectionData(
+          value: percentage,
+          title: '',
+          radius: 60,
+          color: _getColorForIndex(i),
+        ),
+      );
+    }
+    
+    return sections;
+  }
+
+  List<Widget> _createLegendItems(BuildContext context) {
+    return usageData.asMap().entries.map((entry) {
+      final index = entry.key;
+      final usage = entry.value;
+      
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SocialMediaIcon(
+              appName: usage.appName,
+              size: 16,
+              color: _getColorForIndex(index),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '${usage.appName}: ${usage.hoursUsed.toStringAsFixed(1)}h',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  Color _getColorForIndex(int index) {
+    final colors = [
+      const Color(0xFF4285F4), // Blue
+      const Color(0xFF34A853), // Green
+      const Color(0xFFFBBC05), // Yellow
+      const Color(0xFFEA4335), // Red
+      const Color(0xFF9C27B0), // Purple
+      const Color(0xFF00BCD4), // Cyan
+    ];
+    return colors[index % colors.length];
   }
 } 
